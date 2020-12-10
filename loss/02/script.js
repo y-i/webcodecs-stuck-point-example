@@ -7,7 +7,7 @@ const sendKeyFrameRequest = () => {
     // 30fps * 100ms / (1000ms / 1s) = 3frameほど落ちる
 };
 
-const createEncoderAndDecoder = async (stream, videoElement, codec='vp8') => {
+const createEncoderAndDecoder = async (stream, videoElement, codec = 'vp8') => {
     const chunkQueue = [];
 
     const [videoTrack] = stream.getVideoTracks();
@@ -42,17 +42,23 @@ const createEncoderAndDecoder = async (stream, videoElement, codec='vp8') => {
         height: 480,
         framerate: 30,
     });
-    
+
     const videoReader = new VideoTrackReader(videoTrack);
     let cnt = 0; // keyframeを送るかどうかの判定に利用
+    let lastKeyFrameCount = 0;
     const keyframeRate = 150; // keyframeを送る間隔 => 5s
     videoReader.start(videoFrame => {
         cnt = (cnt + 1) % keyframeRate;
 
+        // 定期的または前回のkeyframeから一定時間後のkeyframe要求によってkeyframeを送る
+        const isKeyFrame = !cnt || (requestKeyFrame && (cnt - lastKeyFrameCount + keyframeRate) % keyframeRate > 30);
         videoEncoder.encode(videoFrame, {
-            keyFrame: !cnt || requestKeyFrame,
+            keyFrame: isKeyFrame,
         });
         requestKeyFrame = false;
+        if (isKeyFrame) {
+            lastKeyFrameCount = cnt;
+        }
     });
 
     /**
@@ -71,7 +77,7 @@ const createEncoderAndDecoder = async (stream, videoElement, codec='vp8') => {
             const imageBitmap = await frame.createImageBitmap({
                 colorSpaceConversion: 'default',
             });
-            ctx.drawImage(imageBitmap,0,0);
+            ctx.drawImage(imageBitmap, 0, 0);
         },
         error: (...args) => {
             console.error(...args);
@@ -93,13 +99,13 @@ const createEncoderAndDecoder = async (stream, videoElement, codec='vp8') => {
 
     const processQueue = () => {
         if (chunkQueue.length === 0) return;
-        const {chunk, metadata} = chunkQueue.pop();
+        const { chunk, metadata } = chunkQueue.pop();
 
         if (timesCnt++ < 10) { // タイミング差エミュレーション
             return;
         }
         // 最初はkeyframeでないといけないので、チャンクを無視しつつkeyframeを要求する。後ろのif文があるので実はいらない
-        if (isFirst && chunk.type === 'delta') { 
+        if (isFirst && chunk.type === 'delta') {
             console.log('delta type');
             sendKeyFrameRequest();
             return;
@@ -128,7 +134,7 @@ const createEncoderAndDecoder = async (stream, videoElement, codec='vp8') => {
         videoDecoder.decode(new EncodedVideoChunk(chunk));
         // prevCnt = metadata.count;
     };
-    setInterval(processQueue,10);
+    setInterval(processQueue, 10);
 };
 
 const main = async () => {
