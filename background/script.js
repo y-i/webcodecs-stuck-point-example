@@ -107,10 +107,16 @@ const createEncoderAndDecoder = async (stream, videoElement, codec = 'vp8') => {
     const packetLossRate = 100;
 
     const processQueue = () => {
+        let cnt = 0;
         while (chunkQueue.length > 0) {
             const { chunk, metadata } = chunkQueue.pop();
             // より新しいkeyframeがある場合、追いつくためにチャンクをスキップする
-            if (chunk.timestamp < lastKeyFrameTimeStamp) continue;
+            // 古いチャンクが再生されるのも防ぐ
+            if (chunk.timestamp < lastKeyFrameTimeStamp) {
+                ++cnt;
+                continue;
+            }
+            if (cnt > 0) console.log({cnt});
             
             if (timesCnt++ < 10) { // タイミング差エミュレーション
                 return;
@@ -144,7 +150,10 @@ const createEncoderAndDecoder = async (stream, videoElement, codec = 'vp8') => {
             }
             videoDecoder.decode(new EncodedVideoChunk(chunk));
             prevCnt = metadata.count;
+
+            break;
         }
+        if (cnt > 0) console.log({cnt});
     };
     setInterval(processQueue, 10);
 };
