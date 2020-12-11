@@ -93,7 +93,7 @@ const createEncoderAndDecoder = async (stream, videoElement, codec = 'vp8') => {
     // 直前のチャンクの番号
     let prevCnt = -1;
     // keyframeを受け取った状態か否か
-    let isFirst = true;
+    let isKeyFrameRequired = true;
     // 擬似的なパケロスの頻度
     const packetLossRate = 100;
 
@@ -105,7 +105,7 @@ const createEncoderAndDecoder = async (stream, videoElement, codec = 'vp8') => {
             return;
         }
         // 最初はkeyframeでないといけないので、チャンクを無視しつつkeyframeを要求する。後ろのif文があるので実はいらない
-        if (isFirst && chunk.type === 'delta') {
+        if (isKeyFrameRequired && chunk.type === 'delta') {
             console.log('delta type');
             sendKeyFrameRequest();
             return;
@@ -117,12 +117,12 @@ const createEncoderAndDecoder = async (stream, videoElement, codec = 'vp8') => {
             return;
         }
 
-        isFirst = false;
+        isKeyFrameRequired = false;
 
         // // 現在デルタフレームで直前のフレームが落ちていた場合にこのフレームも破棄する
         // if (chunk.type !== 'key' && metadata.count !== prevCnt + 1) {
         //     console.log('previous chunk was dropped');
-        //     isFirst = true;
+        //     isKeyFrameRequired = true;
         //     sendKeyFrameRequest();
         //     return;
         // }

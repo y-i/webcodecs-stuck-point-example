@@ -85,7 +85,7 @@ const createEncoderAndDecoder = async (stream, videoElement, codec='vp8') => {
     // 最初の方のチャンクを落とすためのカウント
     let timesCnt = 0;
     // keyframeを受け取った状態か否か
-    let isFirst = true;
+    let isKeyFrameRequired = true;
 
     const processQueue = () => {
         if (chunkQueue.length === 0) return;
@@ -97,13 +97,13 @@ const createEncoderAndDecoder = async (stream, videoElement, codec='vp8') => {
         }
 
         // // 最初はkeyframeでないといけないので、チャンクを無視しつつkeyframeを要求
-        // if (isFirst && chunk.type === 'delta') { 
+        // if (isKeyFrameRequired && chunk.type === 'delta') { 
         //     console.log('Discard delta type chunk');
         //     sendKeyFrameRequest();
         //     return;
         // }
 
-        // isFirst = false;
+        // isKeyFrameRequired = false;
 
         videoDecoder.decode(new EncodedVideoChunk(chunk));
     };
