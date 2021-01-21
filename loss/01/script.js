@@ -42,18 +42,31 @@ const createEncoderAndDecoder = async (stream, videoElement, codec='vp8') => {
         height: 480,
         framerate: 30,
     });
-    
-    const videoReader = new VideoTrackReader(videoTrack);
-    let cnt = 0; // keyframeを送るかどうかの判定に利用
-    const keyframeRate = 600; // keyframeを送る間隔
-    videoReader.start(videoFrame => {
-        cnt = (cnt + 1) % keyframeRate;
 
-        videoEncoder.encode(videoFrame, {
-            keyFrame: !cnt || requestKeyFrame,
-        });
-        requestKeyFrame = false;
-    });
+    let cnt = 0; // keyframeを送るかどうかの判定に利用
+    const keyframeRate = 600; // keyframeを送る間隔 => 20s
+
+    const processor = new MediaStreamTrackProcessor(videoTrack);
+    const frameReader = processor.readable.getReader();
+    setTimeout(async () => {
+        while (true) {
+            const { done, value: videoFrame } = await frameReader.read();
+        
+            if (done) {
+              console.log('Stream is done');
+              break;
+            }
+        
+            cnt = (cnt + 1) % keyframeRate;
+
+            // 定期的またはkeyframe要求によってkeyframeを送る
+            const isKeyFrame = !cnt || requestKeyFrame;
+            videoEncoder.encode(videoFrame, {
+                keyFrame: isKeyFrame,
+            });
+            requestKeyFrame = false;
+          }
+    }, 0);
 
     /**
      * Decoder
